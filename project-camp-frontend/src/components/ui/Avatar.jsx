@@ -1,4 +1,4 @@
-export default function Avatar({ name = '', size = 'md', className = '' }) {
+export default function Avatar({ name = '', src = '', size = 'md', className = '' }) {
   const initials = name
     .split(' ')
     .map((n) => n[0])
@@ -22,6 +22,22 @@ export default function Avatar({ name = '', size = 'md', className = '' }) {
     sm: 'w-8 h-8 text-xs',
     md: 'w-10 h-10 text-sm',
     lg: 'w-12 h-12 text-base',
+  }
+
+  const isDefaultPlaceholder = src?.includes('placehold.co')
+
+  if (src && !isDefaultPlaceholder) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={`${sizes[size]} rounded-full object-cover flex-shrink-0 ${className}`}
+        onError={(e) => {
+          // fallback to initials if image fails to load
+          e.target.style.display = 'none'
+        }}
+      />
+    )
   }
 
   return (

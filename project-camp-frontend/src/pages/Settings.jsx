@@ -1,50 +1,59 @@
-import { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { authApi } from '../api/auth.api'
-import { Eye, EyeOff, User, Lock, Mail } from 'lucide-react'
-import Spinner from '../components/ui/Spinner'
-import Avatar from '../components/ui/Avatar'
-import toast from 'react-hot-toast'
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { authApi } from "../api/auth.api";
+import { Eye, EyeOff, User, Lock, Mail } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
+import Avatar from "../components/ui/Avatar";
+import toast from "react-hot-toast";
 
 export default function Settings() {
-  const { user, refetchUser } = useAuth()
-  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '' })
-  const [loadingPassword, setLoadingPassword] = useState(false)
-  const [showOld, setShowOld] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [loadingResend, setLoadingResend] = useState(false)
+  const { user, refetchUser } = useAuth();
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+  });
+  const [loadingPassword, setLoadingPassword] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [loadingResend, setLoadingResend] = useState(false);
 
   const handlePasswordChange = async (e) => {
-    e.preventDefault()
-    setLoadingPassword(true)
+    e.preventDefault();
+    setLoadingPassword(true);
     try {
-      await authApi.changePassword(passwordForm)
-      toast.success('Password changed successfully')
-      setPasswordForm({ oldPassword: '', newPassword: '' })
+      await authApi.changePassword(passwordForm);
+      toast.success("Password changed successfully");
+      setPasswordForm({ oldPassword: "", newPassword: "" });
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to change password')
+      toast.error(err?.response?.data?.message || "Failed to change password");
     } finally {
-      setLoadingPassword(false)
+      setLoadingPassword(false);
     }
-  }
+  };
 
   const handleResendVerification = async () => {
-    setLoadingResend(true)
+    setLoadingResend(true);
     try {
-      await authApi.resendEmailVerification()
-      toast.success('Verification email sent!')
+      await authApi.resendEmailVerification();
+      toast.success("Verification email sent!");
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to resend verification')
+      toast.error(
+        err?.response?.data?.message || "Failed to resend verification",
+      );
     } finally {
-      setLoadingResend(false)
+      setLoadingResend(false);
     }
-  }
+  };
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8 animate-fadeIn">
-        <h1 className="font-display text-3xl text-camp-text-primary">Settings</h1>
-        <p className="text-camp-text-secondary mt-1">Manage your account preferences</p>
+        <h1 className="font-display text-3xl text-camp-text-primary">
+          Settings
+        </h1>
+        <p className="text-camp-text-secondary mt-1">
+          Manage your account preferences
+        </p>
       </div>
 
       {/* Profile */}
@@ -54,13 +63,21 @@ export default function Settings() {
           Profile
         </h2>
         <div className="flex items-center gap-5">
-          <Avatar name={user?.fullName || user?.username || 'U'} size="lg" />
+          <Avatar
+            name={user?.fullName || user?.username || "U"}
+            src={user?.avatar?.url}
+            size="sm"
+          />
           <div>
-            <p className="font-semibold text-camp-text-primary text-lg">{user?.fullName || user?.username}</p>
+            <p className="font-semibold text-camp-text-primary text-lg">
+              {user?.fullName || user?.username}
+            </p>
             <p className="text-sm text-camp-text-secondary">{user?.email}</p>
             {user?.isEmailVerified === false && (
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">Email not verified</span>
+                <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
+                  Email not verified
+                </span>
                 <button
                   onClick={handleResendVerification}
                   disabled={loadingResend}
@@ -76,7 +93,7 @@ export default function Settings() {
       </div>
 
       {/* Change Password */}
-      <div className="card animate-fadeIn" style={{ animationDelay: '60ms' }}>
+      <div className="card animate-fadeIn" style={{ animationDelay: "60ms" }}>
         <h2 className="font-semibold text-camp-text-primary flex items-center gap-2 mb-5">
           <Lock size={16} className="text-camp-green" />
           Change Password
@@ -88,12 +105,17 @@ export default function Settings() {
             </label>
             <div className="relative">
               <input
-                type={showOld ? 'text' : 'password'}
+                type={showOld ? "text" : "password"}
                 className="input pr-10"
                 placeholder="••••••••"
                 required
                 value={passwordForm.oldPassword}
-                onChange={(e) => setPasswordForm((f) => ({ ...f, oldPassword: e.target.value }))}
+                onChange={(e) =>
+                  setPasswordForm((f) => ({
+                    ...f,
+                    oldPassword: e.target.value,
+                  }))
+                }
               />
               <button
                 type="button"
@@ -110,12 +132,17 @@ export default function Settings() {
             </label>
             <div className="relative">
               <input
-                type={showNew ? 'text' : 'password'}
+                type={showNew ? "text" : "password"}
                 className="input pr-10"
                 placeholder="••••••••"
                 required
                 value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
+                onChange={(e) =>
+                  setPasswordForm((f) => ({
+                    ...f,
+                    newPassword: e.target.value,
+                  }))
+                }
               />
               <button
                 type="button"
@@ -127,7 +154,11 @@ export default function Settings() {
             </div>
           </div>
           <div className="flex justify-end">
-            <button type="submit" disabled={loadingPassword} className="btn-primary flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={loadingPassword}
+              className="btn-primary flex items-center gap-2"
+            >
               {loadingPassword && <Spinner size="sm" />}
               Update Password
             </button>
@@ -135,5 +166,5 @@ export default function Settings() {
         </form>
       </div>
     </div>
-  )
+  );
 }
