@@ -5,7 +5,7 @@ const projectSchema = new Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
+      // removed: unique: true  ← was globally unique, wrong
       trim: true,
     },
     description: {
@@ -19,5 +19,8 @@ const projectSchema = new Schema(
   },
   { timestamps: true },
 );
+
+// Compound index: name must be unique PER USER, not globally
+projectSchema.index({ name: 1, createdBy: 1 }, { unique: true });
 
 export const Project = mongoose.model("Project", projectSchema);

@@ -20,29 +20,45 @@ import {
     userResetForgotPasswordValidator,
 } from "../validators/index.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+    authLimiter,
+    resendLimiter,
+} from "../middlewares/rate-limit.middleware.js";
 
 const router = Router();
 
-// unsecure routes
-router.route("/register").post(userRegisterValidator(), validate, registerUser);
-router.route("/login").post(userLoginValidator(), validate, loginUser);
+// unsecure routes — strict rate limiting on all brute-force targets
+router
+    .route("/register")
+    .post(authLimiter, userRegisterValidator(), validate, registerUser);
+
+router
+    .route("/login")
+    .post(authLimiter, userLoginValidator(), validate, loginUser);
+
 router.route("/verify-email/:verificationToken").get(verifyEmail);
+
 router.route("/refresh-token").post(verifyJWT, refreshAccessToken);
+
 router
     .route("/forgot-password")
-    .post(userForgotPasswordValidator(), validate, forgotPasswordRequest);
+    .post(authLimiter, userForgotPasswordValidator(), validate, forgotPasswordRequest);
+
 router
     .route("/reset-password/:resetToken")
-    .post(userResetForgotPasswordValidator(), validate, resetForgotPassword);
+    .post(authLimiter, userResetForgotPasswordValidator(), validate, resetForgotPassword);
 
 // secure routes
 router.route("/logout").post(verifyJWT, logoutUser);
+
 router.route("/current-user").get(verifyJWT, getCurrentUser);
+
 router
     .route("/change-password")
     .post(verifyJWT, userChangeCurrentPasswordValidator(), validate, changePassword);
+
 router
     .route("/resend-email-verification")
-    .get(verifyJWT, resendEmailVerfication);
+    .get(verifyJWT, resendLimiter, resendEmailVerfication);
 
 export default router;

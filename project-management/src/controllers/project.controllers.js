@@ -2,7 +2,7 @@ import asyncHandler from "../utils/async-handler.js";
 import { ProjectMember } from "../models/projectmember.models.js";
 import { Project } from "../models/project.models.js";
 import User from "../models/user.models.js";
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 import { availableUserRoles, UserRolesEnum } from "../utils/constants.js";
 import ApiResponse from "../utils/api-response.js";
 import ApiError from "../utils/api-error.js";
@@ -72,12 +72,21 @@ const getProjectById = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(
-        new ApiResponse(200, project, "Project returned succesfully"),
+        new ApiResponse(200, project, "Project returned successfully"),
     );
 });
 
 const createProject = asyncHandler(async (req, res) => {
     const { name, description } = req.body;
+
+    // Check for duplicate name scoped to this user — not globally
+    const existing = await Project.findOne({
+        name: name.trim(),
+        createdBy: req.user._id,
+    });
+    if (existing) {
+        throw new ApiError(409, "You already have a project with this name");
+    }
 
     const project = await Project.create({
         name,
@@ -100,12 +109,21 @@ const updateProject = asyncHandler(async (req, res) => {
     const { name, description } = req.body;
     const { projectId } = req.params;
 
+    // If renaming, check the new name isn't already taken by this user on another project
+    if (name) {
+        const existing = await Project.findOne({
+            name: name.trim(),
+            createdBy: req.user._id,
+            _id: { $ne: new mongoose.Types.ObjectId(projectId) }, // exclude self
+        });
+        if (existing) {
+            throw new ApiError(409, "You already have a project with this name");
+        }
+    }
+
     const project = await Project.findByIdAndUpdate(
         projectId,
-        {
-            name,
-            description,
-        },
+        { name, description },
         { new: true },
     );
     if (!project) {
@@ -121,13 +139,15 @@ const deleteProject = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
 
     const project = await Project.findByIdAndDelete(projectId);
-    await ProjectMember.deleteMany({ project: project._id });
     if (!project) {
         throw new ApiError(404, "Project not found");
     }
 
+    // Clean up members after confirming project exists
+    await ProjectMember.deleteMany({ project: project._id });
+
     res.status(200).json(
-        new ApiResponse(200, project, "Project deleted succesfully"),
+        new ApiResponse(200, project, "Project deleted successfully"),
     );
 });
 
@@ -139,17 +159,6 @@ const addMembersToProject = asyncHandler(async (req, res) => {
     if (!user) {
         throw new ApiError(404, "User not found");
     }
-
-    // const project = await Project.findById(projectId);
-    // if (!project) {
-    //     throw new ApiError(404, "Project not found");
-    // }
-
-    // await ProjectMember.create({
-    //     project,
-    //     user,
-    //     role,
-    // });
 
     await ProjectMember.findOneAndUpdate(
         {
@@ -186,7 +195,6 @@ const getProjectMembers = asyncHandler(async (req, res) => {
                 project: new mongoose.Types.ObjectId(projectId),
             },
         },
-
         {
             $lookup: {
                 from: "users",
