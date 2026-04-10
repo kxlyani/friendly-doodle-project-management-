@@ -8,7 +8,7 @@ import Spinner from '../components/ui/Spinner'
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ username: '', email: '', password: '' })
+  const [form, setForm] = useState({ username: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
@@ -18,7 +18,6 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      // Backend accepts username + email + password
       await login(form)
       toast.success('Welcome back!')
       navigate('/dashboard')
@@ -61,21 +60,6 @@ export default function Login() {
                 className="input"
                 placeholder="yourusername"
                 value={form.username}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">
-                Email
-              </label>
-              <input
-                name="email"
-                type="email"
-                required
-                className="input"
-                placeholder="you@example.com"
-                value={form.email}
                 onChange={handleChange}
               />
             </div>

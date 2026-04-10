@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { authApi } from "../api/auth.api";
-import { Eye, EyeOff, User, Lock, Mail } from "lucide-react";
+import { EyeOff, Eye, User, Lock } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import Avatar from "../components/ui/Avatar";
 import toast from "react-hot-toast";
@@ -9,11 +9,9 @@ import toast from "react-hot-toast";
 export default function Settings() {
   const { user, refetchUser } = useAuth();
   const [passwordForm, setPasswordForm] = useState({
-    oldPassword: "",
-    newPassword: "",
+    newPassword: '',
   });
   const [loadingPassword, setLoadingPassword] = useState(false);
-  const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [loadingResend, setLoadingResend] = useState(false);
 
@@ -23,7 +21,7 @@ export default function Settings() {
     try {
       await authApi.changePassword(passwordForm);
       toast.success("Password changed successfully");
-      setPasswordForm({ oldPassword: "", newPassword: "" });
+      setPasswordForm({ newPassword: '' });
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to change password");
     } finally {
@@ -99,33 +97,6 @@ export default function Settings() {
           Change Password
         </h2>
         <form onSubmit={handlePasswordChange} className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">
-              Current Password
-            </label>
-            <div className="relative">
-              <input
-                type={showOld ? "text" : "password"}
-                className="input pr-10"
-                placeholder="••••••••"
-                required
-                value={passwordForm.oldPassword}
-                onChange={(e) =>
-                  setPasswordForm((f) => ({
-                    ...f,
-                    oldPassword: e.target.value,
-                  }))
-                }
-              />
-              <button
-                type="button"
-                onClick={() => setShowOld((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-camp-text-muted hover:text-camp-text-secondary"
-              >
-                {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
           <div>
             <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">
               New Password

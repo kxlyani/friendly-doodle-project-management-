@@ -14,11 +14,12 @@ import {
     deleteSubTask,
 } from "../controllers/task.controllers.js";
 import { validate } from "../middlewares/validator.middleware.js";
-// import {
-//     createTaskValidator,
-//     createSubTaskValidator,
-//     updateSubTaskValidator,
-// } from "../validators/index.js";
+import {
+    createTaskValidator,
+    updateTaskValidator,
+    createSubTaskValidator,
+    updateSubTaskValidator,
+} from "../validators/index.js";
 import { UserRolesEnum, availableUserRoles } from "../utils/constants.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -34,13 +35,20 @@ router
     .post(
         validateProjectPermission(adminAndProjectAdmin),
         upload.array("attachments"),
-        createTask
+        createTaskValidator(),
+        validate,
+        createTask,
     );
 
 router
     .route("/:projectId/t/:taskId")
     .get(validateProjectPermission(availableUserRoles), getTaskById)
-    .put(validateProjectPermission(adminAndProjectAdmin), updateTask)
+    .put(
+        validateProjectPermission(adminAndProjectAdmin),
+        updateTaskValidator(),
+        validate,
+        updateTask,
+    )
     .delete(validateProjectPermission(adminAndProjectAdmin), deleteTask);
 
 // Subtask routes
@@ -48,12 +56,19 @@ router
     .route("/:projectId/t/:taskId/subtasks")
     .post(
         validateProjectPermission(adminAndProjectAdmin),
-        createSubTask
+        createSubTaskValidator(),
+        validate,
+        createSubTask,
     );
 
 router
     .route("/:projectId/st/:subTaskId")
-    .put(validateProjectPermission(availableUserRoles), updateSubTask)
+    .put(
+        validateProjectPermission(availableUserRoles),
+        updateSubTaskValidator(),
+        validate,
+        updateSubTask,
+    )
     .delete(validateProjectPermission(adminAndProjectAdmin), deleteSubTask);
 
 export default router;

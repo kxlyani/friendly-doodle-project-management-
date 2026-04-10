@@ -8,7 +8,7 @@ import Spinner from '../components/ui/Spinner'
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ fullName: '', username: '', email: '', password: '' })
+  const [form, setForm] = useState({ username: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
@@ -49,21 +49,6 @@ export default function Register() {
           <p className="text-camp-text-secondary text-sm mb-6">Join your team on Project Camp</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">
-                Full Name
-              </label>
-              <input
-                name="fullName"
-                type="text"
-                required
-                className="input"
-                placeholder="John Doe"
-                value={form.fullName}
-                onChange={handleChange}
-              />
-            </div>
-
             <div>
               <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">
                 Username

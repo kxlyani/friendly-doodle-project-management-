@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import {
   Plus, Users, FileText, CheckSquare, Trash2, Edit2, ArrowLeft,
-  ChevronDown, ChevronUp, Upload, Paperclip, X
+  ChevronDown, ChevronUp, Upload, Paperclip, X, Calendar, Tag
 } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
 import Modal from '../components/ui/Modal'
@@ -17,8 +17,10 @@ import Badge from '../components/ui/Badge'
 import EmptyState from '../components/ui/EmptyState'
 
 // ─── Task Form Modal ───────────────────────────────────────────────────────────
+const EMPTY_TASK_FORM = { title: '', description: '', status: 'to_do', priority: 'medium', assignedTo: '', dueDate: '', tags: '' }
+
 function TaskModal({ isOpen, onClose, projectId, members, onSaved, task }) {
-  const [form, setForm] = useState({ title: '', description: '', status: 'to_do', assignedTo: '' })
+  const [form, setForm] = useState(EMPTY_TASK_FORM)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -27,10 +29,15 @@ function TaskModal({ isOpen, onClose, projectId, members, onSaved, task }) {
         title: task.title || '',
         description: task.description || '',
         status: task.status || 'to_do',
+        priority: task.priority || 'medium',
         assignedTo: task.assignedTo?._id || task.assignedTo || '',
+        // Format ISO date to YYYY-MM-DD for the date input
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '',
+        // Backend stores tags as an array; join for the text input
+        tags: Array.isArray(task.tags) ? task.tags.join(', ') : (task.tags || ''),
       })
     } else {
-      setForm({ title: '', description: '', status: 'to_do', assignedTo: '' })
+      setForm(EMPTY_TASK_FORM)
     }
   }, [task, isOpen])
 
@@ -38,12 +45,19 @@ function TaskModal({ isOpen, onClose, projectId, members, onSaved, task }) {
     e.preventDefault()
     setLoading(true)
     try {
+      // Convert comma-separated tags string → array; send null dueDate to clear it
+      const payload = {
+        ...form,
+        tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        dueDate: form.dueDate || null,
+        assignedTo: form.assignedTo || undefined,
+      }
       if (task) {
-        const res = await taskApi.updateTask(projectId, task._id, form)
+        const res = await taskApi.updateTask(projectId, task._id, payload)
         onSaved(res.data?.data, 'update')
         toast.success('Task updated')
       } else {
-        const res = await taskApi.createTask(projectId, form)
+        const res = await taskApi.createTask(projectId, payload)
         onSaved(res.data?.data, 'create')
         toast.success('Task created')
       }
@@ -78,6 +92,17 @@ function TaskModal({ isOpen, onClose, projectId, members, onSaved, task }) {
             </select>
           </div>
           <div>
+            <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">Priority</label>
+            <select className="input" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
             <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">Assign To</label>
             <select className="input" value={form.assignedTo} onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))}>
               <option value="">Unassigned</option>
@@ -88,6 +113,26 @@ function TaskModal({ isOpen, onClose, projectId, members, onSaved, task }) {
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">Due Date</label>
+            <input
+              className="input"
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">
+            Tags <span className="normal-case font-normal text-camp-text-muted">(comma-separated)</span>
+          </label>
+          <input
+            className="input"
+            placeholder="e.g. frontend, bug, v2"
+            value={form.tags}
+            onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+          />
         </div>
         <div className="flex gap-3 justify-end">
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
@@ -188,7 +233,7 @@ function AddMemberModal({ isOpen, onClose, projectId, onAdded }) {
         <div>
           <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">Role</label>
           <select className="input" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
-            <option value="member">Member</option>
+            <option value="user">Member</option>
             <option value="project_admin">Project Admin</option>
             <option value="admin">Admin</option>
           </select>
@@ -203,6 +248,16 @@ function AddMemberModal({ isOpen, onClose, projectId, onAdded }) {
       </form>
     </Modal>
   )
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function formatDueDate(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  return {
+    label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    isOverdue: d < new Date(),
+  }
 }
 
 // ─── Task Card ─────────────────────────────────────────────────────────────────
@@ -273,12 +328,16 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
               task.status === 'in_progress' ? 'bg-blue-400' : 'bg-gray-200'
             }`} />
             <div className="flex-1 min-w-0">
+              {/* Title + badges + actions */}
               <div className="flex items-start justify-between gap-2">
                 <p className={`font-medium text-sm ${task.status === 'done' ? 'line-through text-camp-text-muted' : 'text-camp-text-primary'}`}>
                   {task.title}
                 </p>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <Badge variant={task.status} label={task.status?.replace('_', ' ')} />
+                  {task.priority && (
+                    <Badge variant={task.priority} label={task.priority} />
+                  )}
+                  <Badge variant={task.status} label={task.status?.replace(/_/g, ' ')} />
                   {canManage && (
                     <>
                       <button onClick={() => setShowEdit(true)} className="p-1.5 hover:bg-camp-bg rounded-lg text-camp-text-muted hover:text-camp-green transition-colors">
@@ -296,7 +355,8 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
                 <p className="text-xs text-camp-text-secondary mt-1 line-clamp-2">{task.description}</p>
               )}
 
-              <div className="flex items-center gap-3 mt-2">
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-2">
                 {task.assignedTo && (
                   <div className="flex items-center gap-1.5">
                     <Avatar name={task.assignedTo?.fullName || task.assignedTo?.username || 'U'} size="xs" />
@@ -305,6 +365,17 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
                     </span>
                   </div>
                 )}
+                {task.dueDate && (() => {
+                  const d = new Date(task.dueDate)
+                  const isOverdue = d < new Date() && task.status !== 'done'
+                  return (
+                    <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-red-500' : 'text-camp-text-muted'}`}>
+                      <Calendar size={11} />
+                      {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {isOverdue && <span className="font-medium"> · Overdue</span>}
+                    </div>
+                  )
+                })()}
                 {totalCount > 0 && (
                   <span className="text-xs text-camp-text-muted">
                     {completedCount}/{totalCount} subtasks
@@ -318,6 +389,18 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
                   {expanded ? 'Less' : 'Details'}
                 </button>
               </div>
+
+              {/* Tags */}
+              {task.tags?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <Tag size={11} className="text-camp-text-muted flex-shrink-0" />
+                  {task.tags.map((tag) => (
+                    <span key={tag} className="text-xs bg-camp-bg text-camp-text-secondary px-2 py-0.5 rounded-lg">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

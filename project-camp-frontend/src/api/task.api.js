@@ -4,8 +4,14 @@ export const taskApi = {
   // Tasks
   getTasks: (projectId) => axiosInstance.get(`/tasks/${projectId}`),
 
-  createTask: (projectId, data) =>
-    axiosInstance.post(`/tasks/${projectId}`, data),
+  // Accepts a plain object for JSON, or a FormData instance when attachments are included.
+  // The backend createTask route uses upload.array("attachments") so multipart is supported.
+  createTask: (projectId, data) => {
+    const isFormData = data instanceof FormData
+    return axiosInstance.post(`/tasks/${projectId}`, data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    })
+  },
 
   getTask: (projectId, taskId) =>
     axiosInstance.get(`/tasks/${projectId}/t/${taskId}`),
@@ -15,12 +21,6 @@ export const taskApi = {
 
   deleteTask: (projectId, taskId) =>
     axiosInstance.delete(`/tasks/${projectId}/t/${taskId}`),
-
-  // File attachment upload (multipart/form-data)
-  uploadTaskFiles: (projectId, taskId, formData) =>
-    axiosInstance.post(`/tasks/${projectId}/t/${taskId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
 
   // Subtasks
   createSubtask: (projectId, taskId, data) =>

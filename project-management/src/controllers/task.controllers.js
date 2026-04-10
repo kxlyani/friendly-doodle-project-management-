@@ -24,7 +24,8 @@ const getTasks = asyncHandler(async (req, res) => {
 });
 
 const createTask = asyncHandler(async (req, res) => {
-    const { title, description, assignedTo, status } = req.body;
+    const { title, description, assignedTo, status, priority, dueDate, tags } =
+        req.body;
     const { projectId } = req.params;
 
     const project = await Project.findById(projectId);
@@ -39,6 +40,11 @@ const createTask = asyncHandler(async (req, res) => {
         size: file.size,
     }));
 
+    // Normalise tags — lowercase and deduplicate
+    const normalisedTags = tags
+        ? [...new Set(tags.map((t) => t.toLowerCase().trim()))]
+        : [];
+
     const task = await Task.create({
         title,
         description,
@@ -47,6 +53,9 @@ const createTask = asyncHandler(async (req, res) => {
             ? new mongoose.Types.ObjectId(assignedTo)
             : undefined,
         status,
+        priority,
+        dueDate: dueDate || null,
+        tags: normalisedTags,
         assignedBy: new mongoose.Types.ObjectId(req.user._id),
         attachments,
     });
@@ -140,6 +149,14 @@ const getTaskById = asyncHandler(async (req, res) => {
             $addFields: {
                 assignedTo: { $arrayElemAt: ["$assignedTo", 0] },
                 assignedBy: { $arrayElemAt: ["$assignedBy", 0] },
+                // Computed field: is the task overdue?
+                isOverdue: {
+                    $and: [
+                        { $ne: ["$dueDate", null] },
+                        { $lt: ["$dueDate", new Date()] },
+                        { $ne: ["$status", "done"] },
+                    ],
+                },
             },
         },
     ]);
@@ -155,20 +172,32 @@ const getTaskById = asyncHandler(async (req, res) => {
 
 const updateTask = asyncHandler(async (req, res) => {
     const { taskId } = req.params;
-    const { title, description, assignedTo, status } = req.body;
+    const { title, description, assignedTo, status, priority, dueDate, tags } =
+        req.body;
+
+    // Normalise tags if provided
+    const normalisedTags = tags
+        ? [...new Set(tags.map((t) => t.toLowerCase().trim()))]
+        : undefined;
+
+    const updatePayload = {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(assignedTo !== undefined && {
+            assignedTo: assignedTo
+                ? new mongoose.Types.ObjectId(assignedTo)
+                : null,
+        }),
+        ...(status !== undefined && { status }),
+        ...(priority !== undefined && { priority }),
+        // Allow explicitly passing null to clear the due date
+        ...(dueDate !== undefined && { dueDate: dueDate || null }),
+        ...(normalisedTags !== undefined && { tags: normalisedTags }),
+    };
 
     const task = await Task.findByIdAndUpdate(
         taskId,
-        {
-            $set: {
-                title,
-                description,
-                assignedTo: assignedTo
-                    ? new mongoose.Types.ObjectId(assignedTo)
-                    : undefined,
-                status,
-            },
-        },
+        { $set: updatePayload },
         { new: true },
     );
 
