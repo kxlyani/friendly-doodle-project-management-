@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { projectApi } from '../api/project.api'
 import { taskApi } from '../api/task.api'
@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import {
   Plus, Users, FileText, CheckSquare, Trash2, Edit2, ArrowLeft,
-  ChevronDown, ChevronUp, Upload, Paperclip, X, Calendar, Tag
+  ChevronDown, ChevronUp, Upload, Paperclip, X, Calendar, Tag,
+  Activity, ArrowRight, RefreshCw
 } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
 import Modal from '../components/ui/Modal'
@@ -468,8 +469,207 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
   )
 }
 
+// ─── Activity Log ──────────────────────────────────────────────────────────────
+
+const ACTION_LABELS = {
+  project_created:      { label: 'created project',        color: 'text-camp-green' },
+  project_updated:      { label: 'updated project',        color: 'text-blue-600' },
+  project_deleted:      { label: 'deleted project',        color: 'text-red-500' },
+  member_added:         { label: 'added member',           color: 'text-camp-green' },
+  member_removed:       { label: 'removed member',         color: 'text-red-500' },
+  member_role_updated:  { label: 'changed role of',        color: 'text-purple-600' },
+  task_created:         { label: 'created task',           color: 'text-camp-green' },
+  task_updated:         { label: 'updated task',           color: 'text-blue-600' },
+  task_deleted:         { label: 'deleted task',           color: 'text-red-500' },
+  task_assigned:        { label: 'assigned task',          color: 'text-indigo-600' },
+  task_status_changed:  { label: 'changed status of',      color: 'text-yellow-600' },
+  subtask_created:      { label: 'added subtask to',       color: 'text-camp-green' },
+  subtask_updated:      { label: 'updated subtask in',     color: 'text-blue-600' },
+  subtask_deleted:      { label: 'deleted subtask from',   color: 'text-red-500' },
+  note_created:         { label: 'added note',             color: 'text-camp-green' },
+  note_deleted:         { label: 'deleted note',           color: 'text-red-500' },
+}
+
+const ENTITY_TYPE_OPTIONS = [
+  { value: '', label: 'All types' },
+  { value: 'task', label: 'Tasks' },
+  { value: 'subtask', label: 'Subtasks' },
+  { value: 'member', label: 'Members' },
+  { value: 'note', label: 'Notes' },
+  { value: 'project', label: 'Project' },
+]
+
+const ACTION_OPTIONS = [
+  { value: '', label: 'All actions' },
+  { value: 'task_created', label: 'Task created' },
+  { value: 'task_updated', label: 'Task updated' },
+  { value: 'task_deleted', label: 'Task deleted' },
+  { value: 'task_assigned', label: 'Task assigned' },
+  { value: 'task_status_changed', label: 'Status changed' },
+  { value: 'subtask_created', label: 'Subtask created' },
+  { value: 'subtask_updated', label: 'Subtask updated' },
+  { value: 'subtask_deleted', label: 'Subtask deleted' },
+  { value: 'member_added', label: 'Member added' },
+  { value: 'member_removed', label: 'Member removed' },
+  { value: 'member_role_updated', label: 'Role changed' },
+  { value: 'note_created', label: 'Note created' },
+  { value: 'note_deleted', label: 'Note deleted' },
+  { value: 'project_created', label: 'Project created' },
+  { value: 'project_updated', label: 'Project updated' },
+]
+
+function ActivityMetadata({ action, metadata }) {
+  if (!metadata || Object.keys(metadata).length === 0) return null
+  if (action === 'task_status_changed' && metadata.from && metadata.to) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-camp-text-muted ml-1">
+        <Badge variant={metadata.from} label={metadata.from.replace(/_/g, ' ')} />
+        <ArrowRight size={10} className="text-camp-text-muted" />
+        <Badge variant={metadata.to} label={metadata.to.replace(/_/g, ' ')} />
+      </span>
+    )
+  }
+  if (action === 'member_role_updated' && metadata.newRole) {
+    return (
+      <span className="text-xs text-camp-text-muted ml-1">
+        {'\u2192'} <Badge variant={metadata.newRole} label={metadata.newRole.replace(/_/g, ' ')} />
+      </span>
+    )
+  }
+  if ((action === 'subtask_created' || action === 'subtask_updated' || action === 'subtask_deleted') && metadata.parentTaskTitle) {
+    return (
+      <span className="text-xs text-camp-text-muted ml-1">
+        (in <span className="font-medium text-camp-text-secondary">"{metadata.parentTaskTitle}"</span>)
+      </span>
+    )
+  }
+  return null
+}
+
+function ActivityLogPanel({ projectId, members }) {
+  const [logs, setLogs] = useState([])
+  const [pagination, setPagination] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [filters, setFilters] = useState({ action: '', entityType: '', actorId: '' })
+
+  const fetchLogs = useCallback(async (page, append) => {
+    if (page === 1) setLoading(true)
+    else setLoadingMore(true)
+    try {
+      const params = { page, limit: 20, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) }
+      const res = await projectApi.getActivityLog(projectId, params)
+      const data = res.data?.data
+      const newLogs = data?.logs ?? []
+      setLogs((prev) => append ? [...prev, ...newLogs] : newLogs)
+      setPagination(data?.pagination ?? null)
+    } catch {
+      toast.error('Failed to load activity log')
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [projectId, filters])
+
+  useEffect(() => {
+    fetchLogs(1, false)
+  }, [fetchLogs])
+
+  const handleLoadMore = () => {
+    if (pagination?.hasNextPage) fetchLogs(pagination.page + 1, true)
+  }
+
+  return (
+    <div>
+      {/* Filter bar */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        <select className="input py-1.5 text-xs w-auto" value={filters.action}
+          onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}>
+          {ACTION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <select className="input py-1.5 text-xs w-auto" value={filters.entityType}
+          onChange={(e) => setFilters((f) => ({ ...f, entityType: e.target.value }))}>
+          {ENTITY_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <select className="input py-1.5 text-xs w-auto" value={filters.actorId}
+          onChange={(e) => setFilters((f) => ({ ...f, actorId: e.target.value }))}>
+          <option value="">All members</option>
+          {members.map((m) => (
+            <option key={m.user?._id} value={m.user?._id}>
+              {m.user?.fullName || m.user?.username}
+            </option>
+          ))}
+        </select>
+        {(filters.action || filters.entityType || filters.actorId) && (
+          <button onClick={() => setFilters({ action: '', entityType: '', actorId: '' })}
+            className="text-xs text-camp-text-muted hover:text-red-500 flex items-center gap-1 transition-colors px-2">
+            <X size={12} /> Clear filters
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+      ) : logs.length === 0 ? (
+        <div className="card">
+          <EmptyState icon={Activity} title="No activity yet"
+            description="Actions on tasks, members, and notes will appear here" />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-0">
+            {logs.map((log, i) => {
+              const actionMeta = ACTION_LABELS[log.action] ?? { label: log.action, color: 'text-camp-text-secondary' }
+              const actorName = log.actor?.fullName || log.actor?.username || 'Someone'
+              const timeStr = new Date(log.createdAt).toLocaleString(undefined, {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+              })
+              const isLast = i === logs.length - 1
+              return (
+                <div key={log._id} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-camp-bg flex items-center justify-center flex-shrink-0 mt-1 border border-gray-100">
+                      <Avatar name={actorName} src={log.actor?.avatar?.url} size="xs" />
+                    </div>
+                    {!isLast && <div className="w-px flex-1 bg-gray-100 mt-1 min-h-[1.5rem]" />}
+                  </div>
+                  <div className="flex-1 pb-4">
+                    <p className="text-sm text-camp-text-primary leading-snug">
+                      <span className="font-semibold">{actorName}</span>
+                      {' '}
+                      <span className={`font-medium ${actionMeta.color}`}>{actionMeta.label}</span>
+                      {' '}
+                      <span className="font-medium text-camp-text-primary">"{log.entity?.name}"</span>
+                      <ActivityMetadata action={log.action} metadata={log.metadata} />
+                    </p>
+                    <p className="text-xs text-camp-text-muted mt-0.5">{timeStr}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {pagination?.hasNextPage && (
+            <div className="flex justify-center mt-4">
+              <button onClick={handleLoadMore} disabled={loadingMore}
+                className="btn-secondary flex items-center gap-2 text-sm">
+                {loadingMore ? <Spinner size="sm" /> : <RefreshCw size={14} />}
+                Load more
+              </button>
+            </div>
+          )}
+          {pagination && (
+            <p className="text-center text-xs text-camp-text-muted mt-3">
+              Showing {logs.length} of {pagination.total} events
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
-const TABS = ['Tasks', 'Notes', 'Members']
+const TABS = ['Tasks', 'Notes', 'Members', 'Activity']
 
 export default function ProjectDetails() {
   const { projectId } = useParams()
@@ -657,9 +857,11 @@ export default function ProjectDetails() {
             }`}
           >
             {tab}
-            <span className={`ml-1.5 text-xs ${activeTab === tab ? 'text-white/70' : 'text-camp-text-muted'}`}>
-              {tab === 'Tasks' ? tasks.length : tab === 'Notes' ? notes.length : members.length}
-            </span>
+            {tab !== 'Activity' && (
+              <span className={`ml-1.5 text-xs ${activeTab === tab ? 'text-white/70' : 'text-camp-text-muted'}`}>
+                {tab === 'Tasks' ? tasks.length : tab === 'Notes' ? notes.length : members.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -755,6 +957,11 @@ export default function ProjectDetails() {
               </ul>
             )}
           </div>
+        )}
+
+        {/* Activity */}
+        {activeTab === 'Activity' && (
+          <ActivityLogPanel projectId={projectId} members={members} />
         )}
       </div>
 

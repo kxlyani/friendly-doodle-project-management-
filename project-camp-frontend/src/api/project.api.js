@@ -26,6 +26,10 @@ export const projectApi = {
 
   removeMember: (projectId, userId) =>
     axiosInstance.delete(`/projects/${projectId}/members/${userId}`),
+
+  // Activity log — supports optional query params: page, limit, action, entityType, actorId
+  getActivityLog: (projectId, params = {}) =>
+    axiosInstance.get(`/projects/${projectId}/activity`, { params }),
 }
 
 /**
