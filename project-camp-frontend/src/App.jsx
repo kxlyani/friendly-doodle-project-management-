@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './routes/ProtectedRoute'
+import RoleRoute from './routes/RoleRoute'
 import AppLayout from './components/common/AppLayout'
 
 import Login from './pages/Login'
@@ -16,6 +17,8 @@ import MyTasks from './pages/MyTasks'
 import Notes from './pages/Notes'
 import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
+import AdminDashboard from './pages/AdminDashboard'
+import Workspace from './pages/Workspace'
 
 export default function App() {
   return (
@@ -34,12 +37,18 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/workspace" element={<Workspace />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<ProjectDetails />} />
                 <Route path="/tasks" element={<MyTasks />} />
                 <Route path="/notes" element={<Notes />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/notifications" element={<Notifications />} />
+
+                {/* Admin-only routes */}
+                <Route element={<RoleRoute requireSystemAdmin />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                </Route>
               </Route>
             </Route>
 

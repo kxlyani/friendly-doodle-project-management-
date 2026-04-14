@@ -37,6 +37,9 @@ app.use("/api/v1/notes", noteRoutes);
 import notificationRoutes from "./routes/notification.routes.js";
 app.use("/api/v1/notifications", notificationRoutes);
 
+import adminRoutes from "./routes/admin.routes.js";
+app.use("/api/v1/admin", adminRoutes);
+
 app.use(errorHandler);
 
 export default app;

@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
+  Shield,
   FolderOpen,
   CheckSquare,
   FileText,
@@ -15,18 +16,26 @@ import { useNotifications } from "../../context/NotificationContext";
 import Avatar from "../ui/Avatar";
 import toast from "react-hot-toast";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", to: "/dashboard" },
-  { icon: FolderOpen, label: "Projects", to: "/projects" },
-  { icon: CheckSquare, label: "My Tasks", to: "/tasks" },
-  { icon: FileText, label: "Notes", to: "/notes" },
-  { icon: Settings, label: "Settings", to: "/settings" },
-];
-
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
+
+  const isSystemAdmin = user?.systemRole === "system_admin";
+
+  const navItems = isSystemAdmin
+    ? [
+        { icon: Shield, label: "Admin", to: "/admin" },
+        { icon: FolderOpen, label: "Projects", to: "/projects" },
+        { icon: Settings, label: "Settings", to: "/settings" },
+      ]
+    : [
+        { icon: LayoutDashboard, label: "Workspace", to: "/workspace" },
+        { icon: FolderOpen, label: "Projects", to: "/projects" },
+        { icon: CheckSquare, label: "My Tasks", to: "/tasks" },
+        { icon: FileText, label: "Notes", to: "/notes" },
+        { icon: Settings, label: "Settings", to: "/settings" },
+      ];
 
   const handleLogout = async () => {
     try {
