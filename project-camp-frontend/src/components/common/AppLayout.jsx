@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { useEffect, useState } from 'react'
 import { adminApi } from '../../api/admin.api'
 import toast from 'react-hot-toast'
+import BottomRightHub from './BottomRightHub'
 
 export default function AppLayout() {
   const [impersonation, setImpersonation] = useState(null)
@@ -61,6 +62,7 @@ export default function AppLayout() {
         ) : null}
         <Outlet />
       </main>
+      <BottomRightHub />
       <Toaster
         position="top-right"
         toastOptions={{
