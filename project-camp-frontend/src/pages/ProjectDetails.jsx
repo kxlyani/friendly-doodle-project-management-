@@ -187,8 +187,13 @@ function NoteModal({ isOpen, onClose, projectId, onSaved, note }) {
         </div>
         <div>
           <label className="text-xs font-medium text-camp-text-secondary mb-1.5 block uppercase tracking-wider">Content</label>
-          <textarea className="input resize-none" rows={5} placeholder="Write your note..."
+          <textarea className="input resize-none" rows={5} placeholder="Write your note... Use @username to mention a team member"
             value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} />
+          {form.content && /@\w+/.test(form.content) && (
+            <p className="text-xs text-camp-green mt-1.5 flex items-center gap-1">
+              <span>✓</span> Mentioned users will be notified
+            </p>
+          )}
         </div>
         <div className="flex gap-3 justify-end">
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>

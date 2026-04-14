@@ -20,7 +20,7 @@ import {
     createProjectValidator,
 } from "../validators/index.js";
 import { validate } from "../middlewares/validator.middleware.js";
-import { availableUserRoles, UserRolesEnum } from "../utils/constants.js";
+import { availableProjectRoles, ProjectRolesEnum } from "../utils/constants.js";
 
 const router = Router();
 router.use(verifyJWT);
@@ -30,9 +30,9 @@ router.route("/").post(createProjectValidator(), validate, createProject);
 
 router
     .route("/:projectId")
-    .get(validateProjectPermission(availableUserRoles), getProjectById)
-    .put(validateProjectPermission([UserRolesEnum.ADMIN]), updateProject)
-    .delete(validateProjectPermission([UserRolesEnum.ADMIN]), deleteProject);
+    .get(validateProjectPermission(availableProjectRoles), getProjectById)
+    .put(validateProjectPermission([ProjectRolesEnum.PROJECT_OWNER]), updateProject)
+    .delete(validateProjectPermission([ProjectRolesEnum.PROJECT_OWNER]), deleteProject);
 
 router
     .route("/:projectId/members")
@@ -41,12 +41,12 @@ router
 
 router
     .route("/:projectId/members/:userId")
-    .put(validateProjectPermission([UserRolesEnum.ADMIN]), updateMemberRole)
-    .delete(validateProjectPermission([UserRolesEnum.ADMIN]), deleteMember);
+    .put(validateProjectPermission([ProjectRolesEnum.PROJECT_OWNER]), updateMemberRole)
+    .delete(validateProjectPermission([ProjectRolesEnum.PROJECT_OWNER]), deleteMember);
 
 // Activity log — any project member can read
 router
     .route("/:projectId/activity")
-    .get(validateProjectPermission(availableUserRoles), getActivityLog);
+    .get(validateProjectPermission(availableProjectRoles), getActivityLog);
 
 export default router;

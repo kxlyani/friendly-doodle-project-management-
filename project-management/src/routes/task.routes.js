@@ -20,20 +20,23 @@ import {
     createSubTaskValidator,
     updateSubTaskValidator,
 } from "../validators/index.js";
-import { UserRolesEnum, availableUserRoles } from "../utils/constants.js";
+import { ProjectRolesEnum, availableProjectRoles } from "../utils/constants.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 router.use(verifyJWT);
 
-const adminAndProjectAdmin = [UserRolesEnum.ADMIN, UserRolesEnum.PROJECT_ADMIN];
+const ownersAndManagers = [
+    ProjectRolesEnum.PROJECT_OWNER,
+    ProjectRolesEnum.PROJECT_MANAGER,
+];
 
 // Task routes
 router
     .route("/:projectId")
-    .get(validateProjectPermission(availableUserRoles), getTasks)
+    .get(validateProjectPermission(availableProjectRoles), getTasks)
     .post(
-        validateProjectPermission(adminAndProjectAdmin),
+        validateProjectPermission(ownersAndManagers),
         upload.array("attachments"),
         createTaskValidator(),
         validate,
@@ -42,20 +45,20 @@ router
 
 router
     .route("/:projectId/t/:taskId")
-    .get(validateProjectPermission(availableUserRoles), getTaskById)
+    .get(validateProjectPermission(availableProjectRoles), getTaskById)
     .put(
-        validateProjectPermission(adminAndProjectAdmin),
+        validateProjectPermission(ownersAndManagers),
         updateTaskValidator(),
         validate,
         updateTask,
     )
-    .delete(validateProjectPermission(adminAndProjectAdmin), deleteTask);
+    .delete(validateProjectPermission(ownersAndManagers), deleteTask);
 
 // Subtask routes
 router
     .route("/:projectId/t/:taskId/subtasks")
     .post(
-        validateProjectPermission(adminAndProjectAdmin),
+        validateProjectPermission(ownersAndManagers),
         createSubTaskValidator(),
         validate,
         createSubTask,
@@ -64,11 +67,11 @@ router
 router
     .route("/:projectId/st/:subTaskId")
     .put(
-        validateProjectPermission(availableUserRoles),
+        validateProjectPermission(availableProjectRoles),
         updateSubTaskValidator(),
         validate,
         updateSubTask,
     )
-    .delete(validateProjectPermission(adminAndProjectAdmin), deleteSubTask);
+    .delete(validateProjectPermission(ownersAndManagers), deleteSubTask);
 
 export default router;

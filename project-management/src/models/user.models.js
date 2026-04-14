@@ -55,6 +55,13 @@ const userSchema = new Schema(
         },
         emailVerificationToken: String,
         emailVerificationExpiry: Date,
+
+        systemRole: {
+            type: String,
+            enum: ["system_admin", "user"],
+            default: "user",
+            index: true,
+        },
     },
     { timestamps: true },
 );

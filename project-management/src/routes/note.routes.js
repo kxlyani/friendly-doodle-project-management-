@@ -10,22 +10,25 @@ import {
     updateNote,
     deleteNote,
 } from "../controllers/note.controllers.js";
-import { UserRolesEnum, availableUserRoles } from "../utils/constants.js";
+import { ProjectRolesEnum, availableProjectRoles } from "../utils/constants.js";
 
 const router = Router();
 router.use(verifyJWT);
 
-const adminOnly = [UserRolesEnum.ADMIN];
+const ownersAndManagers = [
+    ProjectRolesEnum.PROJECT_OWNER,
+    ProjectRolesEnum.PROJECT_MANAGER,
+];
 
 router
     .route("/:projectId")
-    .get(validateProjectPermission(availableUserRoles), getNotes)
-    .post(validateProjectPermission(adminOnly), createNote);
+    .get(validateProjectPermission(availableProjectRoles), getNotes)
+    .post(validateProjectPermission(ownersAndManagers), createNote);
 
 router
     .route("/:projectId/n/:noteId")
-    .get(validateProjectPermission(availableUserRoles), getNoteById)
-    .put(validateProjectPermission(adminOnly), updateNote)
-    .delete(validateProjectPermission(adminOnly), deleteNote);
+    .get(validateProjectPermission(availableProjectRoles), getNoteById)
+    .put(validateProjectPermission(ownersAndManagers), updateNote)
+    .delete(validateProjectPermission(ownersAndManagers), deleteNote);
 
 export default router;

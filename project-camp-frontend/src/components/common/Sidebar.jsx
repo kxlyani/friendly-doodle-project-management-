@@ -8,8 +8,10 @@ import {
   LogOut,
   Tent,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNotifications } from "../../context/NotificationContext";
 import Avatar from "../ui/Avatar";
 import toast from "react-hot-toast";
 
@@ -23,6 +25,7 @@ const navItems = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -87,6 +90,44 @@ export default function Sidebar() {
               </NavLink>
             </li>
           ))}
+
+          {/* Notifications — separate so the badge renders correctly */}
+          <li>
+            <NavLink
+              to="/notifications"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${
+                  isActive
+                    ? "bg-camp-green text-white shadow-green"
+                    : "text-camp-text-secondary hover:bg-camp-bg hover:text-camp-text-primary"
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <div className="relative">
+                    <Bell
+                      size={16}
+                      className={
+                        isActive
+                          ? "text-white"
+                          : "text-camp-text-muted group-hover:text-camp-green"
+                      }
+                    />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="flex-1">Notifications</span>
+                  {isActive && (
+                    <ChevronRight size={14} className="text-white/70" />
+                  )}
+                </>
+              )}
+            </NavLink>
+          </li>
         </ul>
       </nav>
 

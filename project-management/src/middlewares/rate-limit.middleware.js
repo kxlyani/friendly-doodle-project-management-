@@ -22,7 +22,7 @@ const rateLimitHandler = (req, res) => {
  */
 export const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 100,
+    limit: 1000,
     standardHeaders: "draft-7", // Return RateLimit-* headers (RFC draft 7)
     legacyHeaders: false,        // Disable X-RateLimit-* legacy headers
     handler: rateLimitHandler,
@@ -36,7 +36,7 @@ export const globalLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 100,
+    limit: 1000,
     standardHeaders: "draft-7",
     legacyHeaders: false,
     handler: (req, res) => {
@@ -57,7 +57,7 @@ export const authLimiter = rateLimit({
  */
 export const resendLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
-    limit: 100,
+    limit: 1000,
     standardHeaders: "draft-7",
     legacyHeaders: false,
     handler: (req, res) => {

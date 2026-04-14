@@ -3,7 +3,7 @@ import { ProjectMember } from "../models/projectmember.models.js";
 import { Project } from "../models/project.models.js";
 import User from "../models/user.models.js";
 import mongoose from "mongoose";
-import { availableUserRoles, UserRolesEnum, ActivityActionEnum } from "../utils/constants.js";
+import { availableProjectRoles, ProjectRolesEnum, ActivityActionEnum } from "../utils/constants.js";
 import ApiResponse from "../utils/api-response.js";
 import ApiError from "../utils/api-error.js";
 import { logActivity } from "../utils/activity-logger.js";
@@ -65,7 +65,7 @@ const createProject = asyncHandler(async (req, res) => {
     await ProjectMember.create({
         user: new mongoose.Types.ObjectId(req.user._id),
         project: new mongoose.Types.ObjectId(project._id),
-        role: UserRolesEnum.ADMIN,
+        role: ProjectRolesEnum.PROJECT_OWNER,
     });
 
     logActivity({
@@ -187,7 +187,7 @@ const updateMemberRole = asyncHandler(async (req, res) => {
     const { role } = req.body;
     const { projectId, userId } = req.params;
 
-    if (!availableUserRoles.includes(role)) throw new ApiError(400, "Invalid role");
+    if (!availableProjectRoles.includes(role)) throw new ApiError(400, "Invalid role");
 
     const projectMember = await ProjectMember.findOneAndUpdate(
         { user: new mongoose.Types.ObjectId(userId), project: new mongoose.Types.ObjectId(projectId) },

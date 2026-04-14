@@ -6,7 +6,8 @@ dotenv.config({
   path: "./.env",
 });
 
-const port = process.env.PORT || 3000;
+// Default to 8000 to avoid clashing with Vite (3000)
+const port = process.env.PORT || 8000;
 
 connectDB()
   .then(() => {
