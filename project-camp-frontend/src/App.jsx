@@ -18,6 +18,10 @@ import Notes from './pages/Notes'
 import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminUsers from './pages/AdminUsers'
+import AdminProjects from './pages/AdminProjects'
+import AdminAudit from './pages/AdminAudit'
+import AdminAnalytics from './pages/AdminAnalytics'
 import Workspace from './pages/Workspace'
 
 export default function App() {
@@ -48,6 +52,10 @@ export default function App() {
                 {/* Admin-only routes */}
                 <Route element={<RoleRoute requireSystemAdmin />}>
                   <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/projects" element={<AdminProjects />} />
+                  <Route path="/admin/audit" element={<AdminAudit />} />
+                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 </Route>
               </Route>
             </Route>

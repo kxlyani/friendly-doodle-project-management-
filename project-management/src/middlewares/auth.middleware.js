@@ -18,15 +18,54 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
         const decodedtoken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-        const user = await User.findById(decodedtoken?._id).select(
+        const authUser = await User.findById(decodedtoken?._id).select(
             "-password -refreshToken -emailVerificationToken -emailVerificationExpiry",
         );
 
-        if (!user) {
+        if (!authUser) {
             throw new ApiError(401, "Access token invalid");
         }
 
-        req.user = user;
+        req.user = authUser;
+        req.adminUser = null;
+        req.adminContext = null;
+
+        // Break-glass impersonation (system_admin only).
+        // When active, req.user becomes the impersonated user,
+        // while req.adminUser/adminContext preserve the real admin identity.
+        const impersonationToken = req.cookies?.impersonationToken;
+        if (
+            impersonationToken &&
+            authUser.systemRole === SystemRolesEnum.SYSTEM_ADMIN
+        ) {
+            try {
+                const imp = jwt.verify(
+                    impersonationToken,
+                    process.env.ACCESS_TOKEN_SECRET,
+                );
+
+                const impersonatedUser = await User.findById(
+                    imp?.impersonatedUserId,
+                ).select(
+                    "-password -refreshToken -emailVerificationToken -emailVerificationExpiry",
+                );
+
+                if (impersonatedUser) {
+                    req.adminUser = authUser;
+                    req.adminContext = {
+                        adminId: String(imp?.adminId),
+                        impersonatedUserId: String(imp?.impersonatedUserId),
+                        reason: imp?.reason || "",
+                        expiresAt: imp?.exp ? new Date(imp.exp * 1000) : null,
+                    };
+                    req.user = impersonatedUser;
+                }
+            } catch {
+                // Invalid/expired impersonation cookie — ignore.
+                req.adminUser = null;
+                req.adminContext = null;
+            }
+        }
         next();
     } catch (error) {
         throw new ApiError(401, "Unauthorized error", error);
@@ -40,8 +79,12 @@ export const validateProjectPermission = (roles = []) => {
             throw new ApiError(400, "ProjectId is missing");
         }   
 
-        // System admins can access any project-scoped route
-        if (req.user?.systemRole === SystemRolesEnum.SYSTEM_ADMIN) {
+        // System admins can access any project-scoped route,
+        // BUT not while impersonating (then permissions should match impersonated user).
+        if (
+            !req.adminContext &&
+            req.user?.systemRole === SystemRolesEnum.SYSTEM_ADMIN
+        ) {
             req.user.projectRole = null;
             return next();
         }
@@ -72,7 +115,7 @@ export const requireSystemRole = (roles = []) => {
     return asyncHandler(async (req, res, next) => {
         if (!roles.length) return next();
 
-        const role = req.user?.systemRole;
+        const role = req.adminUser?.systemRole ?? req.user?.systemRole;
         if (!role) {
             throw new ApiError(401, "Unauthorized ");
         }

@@ -16,6 +16,17 @@ const projectSchema = new Schema(
       ref: "User",
       required: true,
     },
+
+    archivedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    archivedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true },
 );

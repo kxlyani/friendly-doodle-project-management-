@@ -2,6 +2,9 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Shield,
+  Users as UsersIcon,
+  BarChart3,
+  ScrollText,
   FolderOpen,
   CheckSquare,
   FileText,
@@ -26,6 +29,10 @@ export default function Sidebar() {
   const navItems = isSystemAdmin
     ? [
         { icon: Shield, label: "Admin", to: "/admin" },
+        { icon: UsersIcon, label: "Users", to: "/admin/users" },
+        { icon: FolderOpen, label: "Projects", to: "/admin/projects" },
+        { icon: ScrollText, label: "Audit", to: "/admin/audit" },
+        { icon: BarChart3, label: "Analytics", to: "/admin/analytics" },
         { icon: FolderOpen, label: "Projects", to: "/projects" },
         { icon: Settings, label: "Settings", to: "/settings" },
       ]
