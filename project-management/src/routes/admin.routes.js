@@ -13,6 +13,7 @@ import {
     startImpersonationAdmin,
     stopImpersonationAdmin,
     getImpersonationStatusAdmin,
+    getAdminAnalyticsOverview,
 } from "../controllers/admin.controllers.js";
 import ApiError from "../utils/api-error.js";
 
@@ -40,6 +41,7 @@ router
     .patch(transferProjectOwnershipAdmin);
 router.route("/users").get(getAllUsersAdmin);
 router.route("/audit").get(getAdminAudit);
+router.route("/analytics/overview").get(getAdminAnalyticsOverview);
 router.route("/users/:userId/role").patch(updateUserSystemRoleAdmin);
 
 router.route("/impersonate").post(startImpersonationAdmin);

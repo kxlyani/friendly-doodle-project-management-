@@ -12,6 +12,7 @@ import {
 import { ProjectMember } from "../models/projectmember.models.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
+import { TaskPriorityEnum, TaskStatusEnum } from "../utils/constants.js";
 
 const logAdminAction = async ({ actorId, action, target, metadata = {} }) => {
     try {
@@ -373,6 +374,56 @@ export const getImpersonationStatusAdmin = asyncHandler(async (req, res) => {
                 reason: req.adminContext.reason,
             },
             "Impersonation active",
+        ),
+    );
+});
+
+export const getAdminAnalyticsOverview = asyncHandler(async (req, res) => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [tasksByStatusAgg, tasksByPriorityAgg, overdueTasks, projects7d, projects30d] =
+        await Promise.all([
+            Task.aggregate([
+                { $group: { _id: "$status", count: { $sum: 1 } } },
+                { $project: { _id: 0, status: "$_id", count: 1 } },
+            ]),
+            Task.aggregate([
+                { $group: { _id: "$priority", count: { $sum: 1 } } },
+                { $project: { _id: 0, priority: "$_id", count: 1 } },
+            ]),
+            Task.countDocuments({
+                dueDate: { $ne: null, $lt: now },
+                status: { $ne: TaskStatusEnum.DONE },
+            }),
+            Project.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+            Project.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        ]);
+
+    const tasksByStatus = Object.fromEntries(
+        Object.values(TaskStatusEnum).map((s) => [s, 0]),
+    );
+    for (const row of tasksByStatusAgg) tasksByStatus[row.status] = row.count;
+
+    const tasksByPriority = Object.fromEntries(
+        Object.values(TaskPriorityEnum).map((p) => [p, 0]),
+    );
+    for (const row of tasksByPriorityAgg) tasksByPriority[row.priority] = row.count;
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                tasksByStatus,
+                tasksByPriority,
+                overdueTasks,
+                projectsCreated: {
+                    last7d: projects7d,
+                    last30d: projects30d,
+                },
+            },
+            "Admin analytics overview fetched",
         ),
     );
 });

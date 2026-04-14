@@ -21,5 +21,7 @@ export const adminApi = {
     axiosInstance.post('/admin/impersonate', { userId, reason, ttlMinutes }),
   stopImpersonation: () => axiosInstance.post('/admin/impersonate/stop'),
   impersonationStatus: () => axiosInstance.get('/admin/impersonate/status'),
+
+  analyticsOverview: () => axiosInstance.get('/admin/analytics/overview'),
 }
 

@@ -2,10 +2,75 @@ import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { adminApi } from '../api/admin.api'
 
+function TransferOwnershipModal({
+  open,
+  projectName,
+  users,
+  loading,
+  value,
+  onChange,
+  onClose,
+  onConfirm,
+}) {
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+        <div className="p-5 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-camp-text-primary">
+            Transfer ownership
+          </h2>
+          <p className="text-sm text-camp-text-secondary mt-1">
+            Select the new owner for{' '}
+            <span className="font-medium text-camp-text-primary">
+              {projectName}
+            </span>
+            .
+          </p>
+        </div>
+
+        <div className="p-5">
+          {loading ? (
+            <p className="text-sm text-camp-text-secondary">Loading users…</p>
+          ) : (
+            <select
+              className="input w-full"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+            >
+              <option value="">Select a user…</option>
+              {users.map((u) => (
+                <option key={u._id} value={u._id}>
+                  {(u.fullName || u.username) + (u.email ? ` • ${u.email}` : '')}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <div className="p-5 pt-0 flex justify-end gap-3">
+          <button className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-primary" disabled={!value || loading} onClick={onConfirm}>
+            Transfer
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminProjects() {
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [projects, setProjects] = useState([])
+  const [transferModalOpen, setTransferModalOpen] = useState(false)
+  const [transferProject, setTransferProject] = useState(null)
+  const [transferUsers, setTransferUsers] = useState([])
+  const [transferUsersLoading, setTransferUsersLoading] = useState(false)
+  const [newOwnerUserId, setNewOwnerUserId] = useState('')
 
   const filteredQ = useMemo(() => q.trim(), [q])
 
@@ -47,12 +112,38 @@ export default function AdminProjects() {
     }
   }
 
-  const transfer = async (projectId) => {
-    const newOwnerUserId = window.prompt('New owner userId?')
-    if (!newOwnerUserId) return
+  const openTransfer = async (project) => {
+    setTransferProject(project)
+    setNewOwnerUserId('')
+    setTransferModalOpen(true)
+
+    setTransferUsersLoading(true)
     try {
-      await adminApi.transferOwnership(projectId, newOwnerUserId)
+      const res = await adminApi.users()
+      const data = res.data?.data || res.data
+      setTransferUsers(Array.isArray(data) ? data : [])
+    } catch {
+      toast.error('Failed to load users')
+      setTransferUsers([])
+    } finally {
+      setTransferUsersLoading(false)
+    }
+  }
+
+  const closeTransfer = () => {
+    setTransferModalOpen(false)
+    setTransferProject(null)
+    setNewOwnerUserId('')
+    setTransferUsers([])
+    setTransferUsersLoading(false)
+  }
+
+  const confirmTransfer = async () => {
+    if (!transferProject?._id || !newOwnerUserId) return
+    try {
+      await adminApi.transferOwnership(transferProject._id, newOwnerUserId)
       toast.success('Ownership transferred')
+      closeTransfer()
       fetchProjects()
     } catch {
       toast.error('Failed to transfer ownership')
@@ -132,7 +223,7 @@ export default function AdminProjects() {
                       Archive
                     </button>
                   )}
-                  <button className="btn-primary" onClick={() => transfer(p._id)}>
+                  <button className="btn-primary" onClick={() => openTransfer(p)}>
                     Transfer
                   </button>
                 </div>
@@ -141,6 +232,17 @@ export default function AdminProjects() {
           </div>
         )}
       </div>
+
+      <TransferOwnershipModal
+        open={transferModalOpen}
+        projectName={transferProject?.name || 'project'}
+        users={transferUsers}
+        loading={transferUsersLoading}
+        value={newOwnerUserId}
+        onChange={setNewOwnerUserId}
+        onClose={closeTransfer}
+        onConfirm={confirmTransfer}
+      />
     </div>
   )
 }
