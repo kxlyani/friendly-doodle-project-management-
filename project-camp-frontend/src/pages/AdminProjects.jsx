@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { adminApi } from '../api/admin.api'
+import { projectApi } from '../api/project.api'
 
 function TransferOwnershipModal({
   open,
@@ -71,6 +72,7 @@ export default function AdminProjects() {
   const [transferUsers, setTransferUsers] = useState([])
   const [transferUsersLoading, setTransferUsersLoading] = useState(false)
   const [newOwnerUserId, setNewOwnerUserId] = useState('')
+  const [savingSettingsId, setSavingSettingsId] = useState('')
 
   const filteredQ = useMemo(() => q.trim(), [q])
 
@@ -150,6 +152,22 @@ export default function AdminProjects() {
     }
   }
 
+  const updateSettings = async (projectId, payload) => {
+    setSavingSettingsId(projectId)
+    try {
+      const res = await projectApi.updateProjectSettings(projectId, payload)
+      const updated = res.data?.data ?? null
+      setProjects((prev) =>
+        prev.map((p) => (p._id === projectId ? { ...p, ...updated } : p)),
+      )
+      toast.success('Project settings updated')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update settings')
+    } finally {
+      setSavingSettingsId('')
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-end justify-between gap-4 mb-6">
@@ -158,7 +176,7 @@ export default function AdminProjects() {
             Projects
           </h1>
           <p className="text-sm text-camp-text-secondary mt-1">
-            Archive/restore and transfer ownership.
+            Archive/restore, transfer ownership, and configure progress approval rules.
           </p>
         </div>
         <button className="btn-secondary" onClick={fetchProjects}>
@@ -182,9 +200,11 @@ export default function AdminProjects() {
 
       <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 text-xs font-semibold text-camp-text-muted uppercase tracking-wider grid grid-cols-12 gap-3">
-          <div className="col-span-5">Project</div>
-          <div className="col-span-3">Created</div>
-          <div className="col-span-2">Archived</div>
+          <div className="col-span-3">Project</div>
+          <div className="col-span-2">Progress mode</div>
+          <div className="col-span-2">Manual %</div>
+          <div className="col-span-2">Approval required</div>
+          <div className="col-span-1">Archived</div>
           <div className="col-span-2 text-right">Actions</div>
         </div>
 
@@ -199,18 +219,74 @@ export default function AdminProjects() {
                 key={p._id}
                 className="px-4 py-3 grid grid-cols-12 gap-3 items-center"
               >
-                <div className="col-span-5">
+                <div className="col-span-3">
                   <p className="text-sm font-medium text-camp-text-primary">
                     {p.name}
                   </p>
                   <p className="text-xs text-camp-text-muted line-clamp-1">
                     {p.description || '—'}
                   </p>
+                  <p className="text-[11px] text-camp-text-muted mt-1">
+                    Created {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}
+                  </p>
                 </div>
-                <div className="col-span-3 text-sm text-camp-text-secondary">
-                  {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}
+                <div className="col-span-2">
+                  <select
+                    className="input py-1.5 text-xs"
+                    value={p.progressMode || 'auto'}
+                    onChange={(e) =>
+                      updateSettings(p._id, {
+                        progressMode: e.target.value,
+                        ...(e.target.value === 'auto' ? { manualProgressPercent: null } : {}),
+                      })
+                    }
+                    disabled={savingSettingsId === p._id}
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="manual">Manual</option>
+                  </select>
                 </div>
-                <div className="col-span-2 text-sm text-camp-text-secondary">
+                <div className="col-span-2">
+                  <input
+                    className="input py-1.5 text-xs"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={p.manualProgressPercent ?? 0}
+                    disabled={savingSettingsId === p._id || p.progressMode !== 'manual'}
+                    onBlur={(e) =>
+                      updateSettings(p._id, {
+                        progressMode: 'manual',
+                        manualProgressPercent: Number(e.target.value || 0),
+                      })
+                    }
+                    onChange={(e) =>
+                      setProjects((prev) =>
+                        prev.map((item) =>
+                          item._id === p._id
+                            ? { ...item, manualProgressPercent: e.target.value === '' ? '' : Number(e.target.value) }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="inline-flex items-center gap-2 text-sm text-camp-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(p.requireTaskCompletionApproval)}
+                      disabled={savingSettingsId === p._id}
+                      onChange={(e) =>
+                        updateSettings(p._id, {
+                          requireTaskCompletionApproval: e.target.checked,
+                        })
+                      }
+                    />
+                    Enabled
+                  </label>
+                </div>
+                <div className="col-span-1 text-sm text-camp-text-secondary">
                   {p.archivedAt ? 'Yes' : 'No'}
                 </div>
                 <div className="col-span-2 flex justify-end gap-2">

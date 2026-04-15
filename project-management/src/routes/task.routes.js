@@ -9,6 +9,9 @@ import {
     getTaskById,
     updateTask,
     deleteTask,
+    getMyDashboard,
+    requestTaskCompletion,
+    reviewTaskCompletion,
     createSubTask,
     updateSubTask,
     deleteSubTask,
@@ -19,6 +22,7 @@ import {
     updateTaskValidator,
     createSubTaskValidator,
     updateSubTaskValidator,
+    reviewTaskCompletionValidator,
 } from "../validators/index.js";
 import { ProjectRolesEnum, availableProjectRoles } from "../utils/constants.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -30,6 +34,8 @@ const ownersAndManagers = [
     ProjectRolesEnum.PROJECT_OWNER,
     ProjectRolesEnum.PROJECT_MANAGER,
 ];
+
+router.route("/dashboard/me").get(getMyDashboard);
 
 // Task routes
 router
@@ -53,6 +59,19 @@ router
         updateTask,
     )
     .delete(validateProjectPermission(ownersAndManagers), deleteTask);
+
+router
+    .route("/:projectId/t/:taskId/request-completion")
+    .post(validateProjectPermission(availableProjectRoles), requestTaskCompletion);
+
+router
+    .route("/:projectId/t/:taskId/review-completion")
+    .post(
+        validateProjectPermission(ownersAndManagers),
+        reviewTaskCompletionValidator(),
+        validate,
+        reviewTaskCompletion,
+    );
 
 // Subtask routes
 router

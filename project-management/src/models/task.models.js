@@ -60,6 +60,34 @@ const taskSchema = new Schema(
             ],
             default: [],
         },
+        completionRequestedAt: {
+            type: Date,
+            default: null,
+        },
+        completionRequestedBy: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        completionReviewedAt: {
+            type: Date,
+            default: null,
+        },
+        completionReviewedBy: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        completionReviewComment: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+        completionReviewOutcome: {
+            type: String,
+            enum: ["approved", "rejected", null],
+            default: null,
+        },
     },
     { timestamps: true },
 );

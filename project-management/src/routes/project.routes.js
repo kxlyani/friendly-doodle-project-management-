@@ -11,6 +11,7 @@ import {
     getProjectById,
     getProjectMembers,
     getProjects,
+    updateProjectSettings,
     updateMemberRole,
     updateProject,
 } from "../controllers/project.controllers.js";
@@ -18,6 +19,7 @@ import { getActivityLog } from "../controllers/activity.controllers.js";
 import {
     addMembertoProjectValidator,
     createProjectValidator,
+    updateProjectSettingsValidator,
 } from "../validators/index.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import { availableProjectRoles, ProjectRolesEnum } from "../utils/constants.js";
@@ -33,6 +35,18 @@ router
     .get(validateProjectPermission(availableProjectRoles), getProjectById)
     .put(validateProjectPermission([ProjectRolesEnum.PROJECT_OWNER]), updateProject)
     .delete(validateProjectPermission([ProjectRolesEnum.PROJECT_OWNER]), deleteProject);
+
+router
+    .route("/:projectId/settings")
+    .patch(
+        validateProjectPermission([
+            ProjectRolesEnum.PROJECT_OWNER,
+            ProjectRolesEnum.PROJECT_MANAGER,
+        ]),
+        updateProjectSettingsValidator(),
+        validate,
+        updateProjectSettings,
+    );
 
 router
     .route("/:projectId/members")

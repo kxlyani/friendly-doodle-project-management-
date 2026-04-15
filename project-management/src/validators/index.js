@@ -86,6 +86,23 @@ const addMembertoProjectValidator = () => {
     ];
 };
 
+const updateProjectSettingsValidator = () => {
+    return [
+        body("progressMode")
+            .optional()
+            .isIn(["auto", "manual"])
+            .withMessage("progressMode must be one of: auto, manual"),
+        body("manualProgressPercent")
+            .optional({ nullable: true })
+            .isFloat({ min: 0, max: 100 })
+            .withMessage("manualProgressPercent must be between 0 and 100"),
+        body("requireTaskCompletionApproval")
+            .optional()
+            .isBoolean()
+            .withMessage("requireTaskCompletionApproval must be a boolean"),
+    ];
+};
+
 const createTaskValidator = () => {
     return [
         body("title")
@@ -192,6 +209,22 @@ const updateSubTaskValidator = () => {
     ];
 };
 
+const reviewTaskCompletionValidator = () => {
+    return [
+        body("decision")
+            .notEmpty()
+            .withMessage("decision is required")
+            .isIn(["approved", "rejected"])
+            .withMessage("decision must be approved or rejected"),
+        body("comment")
+            .optional()
+            .isString()
+            .withMessage("comment must be a string")
+            .isLength({ max: 500 })
+            .withMessage("comment cannot exceed 500 characters"),
+    ];
+};
+
 export {
     userRegisterValidator,
     userLoginValidator,
@@ -199,9 +232,11 @@ export {
     userForgotPasswordValidator,
     userResetForgotPasswordValidator,
     createProjectValidator,
+    updateProjectSettingsValidator,
     addMembertoProjectValidator,
     createTaskValidator,
     updateTaskValidator,
     createSubTaskValidator,
     updateSubTaskValidator,
+    reviewTaskCompletionValidator,
 };

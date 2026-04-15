@@ -16,6 +16,21 @@ const projectSchema = new Schema(
       ref: "User",
       required: true,
     },
+    progressMode: {
+      type: String,
+      enum: ["auto", "manual"],
+      default: "auto",
+    },
+    manualProgressPercent: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
+    },
+    requireTaskCompletionApproval: {
+      type: Boolean,
+      default: false,
+    },
 
     archivedAt: {
       type: Date,

@@ -11,6 +11,9 @@ export const projectApi = {
   updateProject: (projectId, data) =>
     axiosInstance.put(`/projects/${projectId}`, data),
 
+  updateProjectSettings: (projectId, data) =>
+    axiosInstance.patch(`/projects/${projectId}/settings`, data),
+
   deleteProject: (projectId) =>
     axiosInstance.delete(`/projects/${projectId}`),
 

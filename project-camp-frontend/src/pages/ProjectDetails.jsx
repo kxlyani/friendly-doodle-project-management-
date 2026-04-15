@@ -267,15 +267,32 @@ function formatDueDate(dateStr) {
 }
 
 // ─── Task Card ─────────────────────────────────────────────────────────────────
-function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
+function TaskCard({
+  task,
+  projectId,
+  members,
+  onUpdate,
+  onDelete,
+  userRole,
+  currentUserId,
+  requireTaskCompletionApproval,
+}) {
   const [expanded, setExpanded] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [newSubtask, setNewSubtask] = useState('')
   const [addingSubtask, setAddingSubtask] = useState(false)
+  const [reviewingCompletion, setReviewingCompletion] = useState(false)
 
   const canManage = userRole === 'admin' || userRole === 'project_admin'
+  const isAssignedToCurrentUser =
+    (task.assignedTo?._id || task.assignedTo) === currentUserId
+  const canRequestCompletion =
+    !canManage &&
+    isAssignedToCurrentUser &&
+    task.status !== 'done' &&
+    task.status !== 'completion_requested'
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -324,6 +341,44 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
   const completedCount = task.subtasks?.filter((s) => s.isCompleted).length || 0
   const totalCount = task.subtasks?.length || 0
 
+  const requestCompletion = async () => {
+    try {
+      const res = await taskApi.requestCompletion(projectId, task._id)
+      onUpdate(res.data?.data || task)
+      toast.success(
+        requireTaskCompletionApproval
+          ? 'Completion request sent for review'
+          : 'Task marked as done',
+      )
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to submit completion')
+    }
+  }
+
+  const reviewCompletion = async (decision) => {
+    setReviewingCompletion(true)
+    try {
+      const comment =
+        decision === 'rejected'
+          ? window.prompt('Optional rejection comment:', '') || ''
+          : ''
+      const res = await taskApi.reviewCompletion(projectId, task._id, {
+        decision,
+        ...(comment ? { comment } : {}),
+      })
+      onUpdate(res.data?.data || task)
+      toast.success(
+        decision === 'approved'
+          ? 'Completion approved'
+          : 'Completion rejected',
+      )
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to review completion')
+    } finally {
+      setReviewingCompletion(false)
+    }
+  }
+
   return (
     <>
       <div className="border border-gray-100 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
@@ -355,6 +410,34 @@ function TaskCard({ task, projectId, members, onUpdate, onDelete, userRole }) {
                     </>
                   )}
                 </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                {canRequestCompletion && (
+                  <button
+                    onClick={requestCompletion}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-camp-green/10 text-camp-green hover:bg-camp-green/20"
+                  >
+                    {requireTaskCompletionApproval ? 'Request Completion' : 'Mark Done'}
+                  </button>
+                )}
+                {canManage && task.status === 'completion_requested' && (
+                  <>
+                    <button
+                      onClick={() => reviewCompletion('approved')}
+                      disabled={reviewingCompletion}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => reviewCompletion('rejected')}
+                      disabled={reviewingCompletion}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
               </div>
 
               {task.description && (
@@ -488,6 +571,9 @@ const ACTION_LABELS = {
   task_deleted:         { label: 'deleted task',           color: 'text-red-500' },
   task_assigned:        { label: 'assigned task',          color: 'text-indigo-600' },
   task_status_changed:  { label: 'changed status of',      color: 'text-yellow-600' },
+  task_completion_requested: { label: 'requested completion for', color: 'text-amber-600' },
+  task_completion_approved: { label: 'approved completion for', color: 'text-green-600' },
+  task_completion_rejected: { label: 'rejected completion for', color: 'text-red-600' },
   subtask_created:      { label: 'added subtask to',       color: 'text-camp-green' },
   subtask_updated:      { label: 'updated subtask in',     color: 'text-blue-600' },
   subtask_deleted:      { label: 'deleted subtask from',   color: 'text-red-500' },
@@ -511,6 +597,9 @@ const ACTION_OPTIONS = [
   { value: 'task_deleted', label: 'Task deleted' },
   { value: 'task_assigned', label: 'Task assigned' },
   { value: 'task_status_changed', label: 'Status changed' },
+  { value: 'task_completion_requested', label: 'Completion requested' },
+  { value: 'task_completion_approved', label: 'Completion approved' },
+  { value: 'task_completion_rejected', label: 'Completion rejected' },
   { value: 'subtask_created', label: 'Subtask created' },
   { value: 'subtask_updated', label: 'Subtask updated' },
   { value: 'subtask_deleted', label: 'Subtask deleted' },
@@ -885,7 +974,12 @@ export default function ProjectDetails() {
               {tasks.map((task) => (
                 <div key={task._id} className="animate-fadeIn">
                   <TaskCard task={task} projectId={projectId} members={members}
-                    onUpdate={handleTaskUpdate} onDelete={handleTaskDelete} userRole={userRole} />
+                    onUpdate={handleTaskUpdate}
+                    onDelete={handleTaskDelete}
+                    userRole={userRole}
+                    currentUserId={user?._id || user?.id}
+                    requireTaskCompletionApproval={Boolean(project?.requireTaskCompletionApproval)}
+                  />
                 </div>
               ))}
             </div>

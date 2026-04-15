@@ -22,6 +22,7 @@ export const availableProjectRoles = Object.values(ProjectRolesEnum);
 export const TaskStatusEnum = {
     TO_DO: "to_do",
     IN_PROGRESS: "in_progress",
+    COMPLETION_REQUESTED: "completion_requested",
     DONE: "done",
 };
 
@@ -48,6 +49,9 @@ export const ActivityActionEnum = {
     TASK_DELETED:        "task_deleted",
     TASK_ASSIGNED:       "task_assigned",
     TASK_STATUS_CHANGED: "task_status_changed",
+    TASK_COMPLETION_REQUESTED: "task_completion_requested",
+    TASK_COMPLETION_APPROVED: "task_completion_approved",
+    TASK_COMPLETION_REJECTED: "task_completion_rejected",
     SUBTASK_CREATED:     "subtask_created",
     SUBTASK_UPDATED:     "subtask_updated",
     SUBTASK_DELETED:     "subtask_deleted",
@@ -61,6 +65,9 @@ export const NotificationTypeEnum = {
     TASK_ASSIGNED:       "task_assigned",
     TASK_UNASSIGNED:     "task_unassigned",
     TASK_STATUS_CHANGED: "task_status_changed",
+    TASK_COMPLETION_REQUESTED: "task_completion_requested",
+    TASK_COMPLETION_APPROVED: "task_completion_approved",
+    TASK_COMPLETION_REJECTED: "task_completion_rejected",
     MENTION:             "mention",
     ADDED_TO_PROJECT:    "added_to_project",
 };

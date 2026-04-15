@@ -2,14 +2,65 @@ import asyncHandler from "../utils/async-handler.js";
 import { ProjectMember } from "../models/projectmember.models.js";
 import { Project } from "../models/project.models.js";
 import User from "../models/user.models.js";
+import { Task } from "../models/task.models.js";
 import mongoose from "mongoose";
-import { availableProjectRoles, ProjectRolesEnum, ActivityActionEnum } from "../utils/constants.js";
+import { availableProjectRoles, ProjectRolesEnum, ActivityActionEnum, TaskStatusEnum } from "../utils/constants.js";
 import ApiResponse from "../utils/api-response.js";
 import ApiError from "../utils/api-error.js";
 import { logActivity } from "../utils/activity-logger.js";
 
+const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+const attachProjectProgress = async (projects) => {
+    if (!projects.length) return projects;
+
+    const projectIds = projects
+        .map((entry) => entry.project?._id || entry._id)
+        .filter(Boolean)
+        .map((id) => new mongoose.Types.ObjectId(id));
+
+    const counts = await Task.aggregate([
+        { $match: { project: { $in: projectIds } } },
+        {
+            $group: {
+                _id: "$project",
+                totalTasks: { $sum: 1 },
+                doneTasks: {
+                    $sum: {
+                        $cond: [{ $eq: ["$status", TaskStatusEnum.DONE] }, 1, 0],
+                    },
+                },
+            },
+        },
+    ]);
+
+    const countMap = new Map(counts.map((entry) => [String(entry._id), entry]));
+
+    return projects.map((entry) => {
+        const target = entry.project || entry;
+        const projectId = String(target._id);
+        const record = countMap.get(projectId) || { totalTasks: 0, doneTasks: 0 };
+        const autoProgress = record.totalTasks
+            ? clampPercent((record.doneTasks / record.totalTasks) * 100)
+            : 0;
+        const progress = target.progressMode === "manual" && typeof target.manualProgressPercent === "number"
+            ? clampPercent(target.manualProgressPercent)
+            : autoProgress;
+
+        const mergedProject = {
+            ...target,
+            progress,
+            autoProgress,
+            totalTasks: record.totalTasks,
+            doneTasks: record.doneTasks,
+        };
+
+        return entry.project ? { ...entry, project: mergedProject } : mergedProject;
+    });
+};
+
 const getProjects = asyncHandler(async (req, res) => {
-    const projects = await ProjectMember.aggregate([
+    const projectsRaw = await ProjectMember.aggregate([
         { $match: { user: new mongoose.Types.ObjectId(req.user._id) } },
         {
             $lookup: {
@@ -33,19 +84,31 @@ const getProjects = asyncHandler(async (req, res) => {
         { $unwind: "$project" },
         {
             $project: {
-                project: { _id: 1, name: 1, description: 1, members: 1, createdAt: 1, createdBy: 1 },
+                project: {
+                    _id: 1,
+                    name: 1,
+                    description: 1,
+                    members: 1,
+                    createdAt: 1,
+                    createdBy: 1,
+                    progressMode: 1,
+                    manualProgressPercent: 1,
+                    requireTaskCompletionApproval: 1,
+                },
                 role: 1,
                 _id: 0,
             },
         },
     ]);
+    const projects = await attachProjectProgress(projectsRaw);
 
     return res.status(200).json(new ApiResponse(200, projects, "Projects fetched successfully"));
 });
 
 const getProjectById = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
-    const project = await Project.findById(projectId);
+    const rawProject = await Project.findById(projectId).lean();
+    const [project] = await attachProjectProgress(rawProject ? [rawProject] : []);
     if (!project) throw new ApiError(404, "Project not found");
     res.status(200).json(new ApiResponse(200, project, "Project returned successfully"));
 });
@@ -111,6 +174,48 @@ const updateProject = asyncHandler(async (req, res) => {
     }).catch(() => {});
 
     return res.status(200).json(new ApiResponse(200, project, "Project updated successfully"));
+});
+
+const updateProjectSettings = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const { progressMode, manualProgressPercent, requireTaskCompletionApproval } = req.body;
+
+    const updatePayload = {};
+    if (progressMode !== undefined) updatePayload.progressMode = progressMode;
+    if (manualProgressPercent !== undefined) {
+        updatePayload.manualProgressPercent = manualProgressPercent === null ? null : Number(manualProgressPercent);
+    }
+    if (requireTaskCompletionApproval !== undefined) {
+        updatePayload.requireTaskCompletionApproval = requireTaskCompletionApproval;
+    }
+
+    if (!Object.keys(updatePayload).length) {
+        throw new ApiError(400, "No settings provided");
+    }
+
+    if (updatePayload.progressMode === "auto" && manualProgressPercent === undefined) {
+        updatePayload.manualProgressPercent = null;
+    }
+
+    const project = await Project.findByIdAndUpdate(
+        projectId,
+        { $set: updatePayload },
+        { new: true },
+    ).lean();
+    if (!project) throw new ApiError(404, "Project not found");
+
+    logActivity({
+        projectId,
+        actorId: req.user._id,
+        action: ActivityActionEnum.PROJECT_UPDATED,
+        entityType: "project",
+        entityId: projectId,
+        entityName: project.name,
+        metadata: { updatedFields: Object.keys(updatePayload) },
+    }).catch(() => {});
+
+    const [withProgress] = await attachProjectProgress([project]);
+    return res.status(200).json(new ApiResponse(200, withProgress, "Project settings updated successfully"));
 });
 
 const deleteProject = asyncHandler(async (req, res) => {
@@ -241,6 +346,7 @@ export {
     updateProject,
     deleteProject,
     addMembersToProject,
+    updateProjectSettings,
     getProjectMembers,
     updateMemberRole,
     deleteMember,

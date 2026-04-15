@@ -3,6 +3,7 @@ const variants = {
   to_do: 'bg-gray-100 text-gray-600',
   todo: 'bg-gray-100 text-gray-600',
   in_progress: 'bg-blue-100 text-blue-700',
+  completion_requested: 'bg-amber-100 text-amber-700',
   done: 'bg-green-100 text-green-700',
   // roles
   admin: 'bg-camp-green/10 text-camp-green',

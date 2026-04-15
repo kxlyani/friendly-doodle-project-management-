@@ -47,7 +47,7 @@ function ProjectOverviewCard({ project }) {
     'Testing',
     'Delivered',
   ]
-  const progress = Math.min(Math.max(project.progress || 40, 0), 100)
+  const progress = Math.min(Math.max(project.progress || 0, 0), 100)
   const stageIdx = Math.floor((progress / 100) * (statusStages.length - 1))
 
   return (
@@ -95,6 +95,9 @@ function ProjectOverviewCard({ project }) {
           </div>
           <div className="flex items-center justify-between mt-3">
             <span className="text-white/70 text-xs">{progress}% complete</span>
+            <span className="text-white/60 text-xs">
+              {project.progressMode === 'manual' ? 'manual' : 'auto'}
+            </span>
             {project.dueDate && (
               <div className="flex items-center gap-1.5 text-white/70 text-xs">
                 <Calendar size={12} />
