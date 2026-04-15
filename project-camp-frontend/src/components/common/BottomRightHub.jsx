@@ -22,6 +22,76 @@ const TABS = {
   CHAT: 'chat',
 }
 
+function StartChatModal({
+  open,
+  users,
+  loading,
+  search,
+  setSearch,
+  selectedUserId,
+  setSelectedUserId,
+  onClose,
+  onCreate,
+}) {
+  if (!open) return null
+
+  return (
+    <div className="absolute bottom-20 right-0 w-[340px] max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <p className="text-sm font-semibold text-camp-text-primary">Start chat</p>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-camp-bg text-camp-text-muted"
+          title="Close"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="p-4 space-y-3">
+        <input
+          className="input w-full"
+          placeholder="Search user by name/email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        {loading ? (
+          <div className="py-4 flex justify-center">
+            <Spinner size="sm" />
+          </div>
+        ) : (
+          <select
+            className="input w-full"
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+          >
+            <option value="">Select a user…</option>
+            {users.map((u) => (
+              <option key={u._id} value={u._id}>
+                {(u.fullName || u.username) + (u.email ? ` • ${u.email}` : '')}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div className="px-4 pb-4 flex justify-end gap-2">
+        <button className="btn-secondary" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          className="btn-primary"
+          onClick={onCreate}
+          disabled={!selectedUserId || loading}
+        >
+          Start
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function BottomRightHub() {
   const navigate = useNavigate()
   const { unreadCount, decrementUnread, clearUnread, refresh } = useNotifications()
@@ -41,6 +111,11 @@ export default function BottomRightHub() {
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
+  const [startChatOpen, setStartChatOpen] = useState(false)
+  const [chatUsers, setChatUsers] = useState([])
+  const [loadingChatUsers, setLoadingChatUsers] = useState(false)
+  const [chatUserSearch, setChatUserSearch] = useState('')
+  const [selectedChatUserId, setSelectedChatUserId] = useState('')
 
   const rootRef = useRef(null)
 
@@ -92,6 +167,20 @@ export default function BottomRightHub() {
     [],
   )
 
+  const fetchChatUsers = useCallback(async (q = '') => {
+    setLoadingChatUsers(true)
+    try {
+      const res = await chatApi.getUsers(q || undefined)
+      const data = res.data?.data || res.data
+      setChatUsers(Array.isArray(data) ? data : [])
+    } catch {
+      toast.error('Failed to load users')
+      setChatUsers([])
+    } finally {
+      setLoadingChatUsers(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!open) return
     refresh()
@@ -111,6 +200,14 @@ export default function BottomRightHub() {
     if (!activeConvoId) return
     fetchMessages(activeConvoId)
   }, [open, tab, activeConvoId, fetchMessages])
+
+  useEffect(() => {
+    if (!startChatOpen) return
+    const id = window.setTimeout(() => {
+      fetchChatUsers(chatUserSearch.trim())
+    }, 250)
+    return () => window.clearTimeout(id)
+  }, [startChatOpen, chatUserSearch, fetchChatUsers])
 
   useEffect(() => {
     if (!open) return
@@ -357,22 +454,10 @@ export default function BottomRightHub() {
                     className="p-1.5 rounded-lg hover:bg-camp-bg text-camp-text-muted hover:text-camp-green"
                     title="Start chat"
                     onClick={async () => {
-                      const idsRaw = window.prompt('Enter participant userIds (comma separated)')
-                      if (!idsRaw) return
-                      const ids = idsRaw
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                      if (!ids.length) return
-                      try {
-                        const res = await chatApi.createConversation({ participantIds: ids })
-                        const convo = res.data?.data || res.data
-                        await fetchConversations()
-                        if (convo?._id) setActiveConvoId(convo._id)
-                        toast.success('Conversation ready')
-                      } catch {
-                        toast.error('Failed to create conversation')
-                      }
+                      setStartChatOpen(true)
+                      setSelectedChatUserId('')
+                      setChatUserSearch('')
+                      await fetchChatUsers('')
                     }}
                   >
                     <UserPlus size={14} />
@@ -470,6 +555,38 @@ export default function BottomRightHub() {
           )}
         </div>
       ) : null}
+
+      <StartChatModal
+        open={open && tab === TABS.CHAT && startChatOpen}
+        users={chatUsers}
+        loading={loadingChatUsers}
+        search={chatUserSearch}
+        setSearch={setChatUserSearch}
+        selectedUserId={selectedChatUserId}
+        setSelectedUserId={setSelectedChatUserId}
+        onClose={() => {
+          setStartChatOpen(false)
+          setSelectedChatUserId('')
+          setChatUserSearch('')
+        }}
+        onCreate={async () => {
+          if (!selectedChatUserId) return
+          try {
+            const res = await chatApi.createConversation({
+              participantIds: [selectedChatUserId],
+            })
+            const convo = res.data?.data || res.data
+            await fetchConversations()
+            if (convo?._id) setActiveConvoId(convo._id)
+            setStartChatOpen(false)
+            setSelectedChatUserId('')
+            setChatUserSearch('')
+            toast.success('Conversation ready')
+          } catch {
+            toast.error('Failed to create conversation')
+          }
+        }}
+      />
 
       <button
         onClick={toggleOpen}

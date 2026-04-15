@@ -4,6 +4,7 @@ import ApiError from "../utils/api-error.js";
 import mongoose from "mongoose";
 import { ChatConversation } from "../models/chatconversation.models.js";
 import { ChatMessage } from "../models/chatmessage.models.js";
+import User from "../models/user.models.js";
 
 const ensureObjectId = (id, name) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -11,6 +12,32 @@ const ensureObjectId = (id, name) => {
     }
     return new mongoose.Types.ObjectId(id);
 };
+
+export const getChatUsers = asyncHandler(async (req, res) => {
+    const { q } = req.query;
+    const search = typeof q === "string" && q.trim().length ? q.trim() : null;
+    const me = new mongoose.Types.ObjectId(req.user._id);
+
+    const filter = {
+        _id: { $ne: me },
+        ...(search
+            ? {
+                  $or: [
+                      { username: { $regex: search, $options: "i" } },
+                      { email: { $regex: search, $options: "i" } },
+                      { fullName: { $regex: search, $options: "i" } },
+                  ],
+              }
+            : {}),
+    };
+
+    const users = await User.find(filter)
+        .select("_id username email fullName avatar")
+        .sort({ createdAt: -1 })
+        .limit(100);
+
+    return res.status(200).json(new ApiResponse(200, users, "Users fetched"));
+});
 
 export const getConversations = asyncHandler(async (req, res) => {
     const me = new mongoose.Types.ObjectId(req.user._id);
